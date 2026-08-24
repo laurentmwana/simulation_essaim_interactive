@@ -1,0 +1,50 @@
+<h2 class="sr-only">Simulation animée d'un essaim de robots illustrant l'agrégation et le flocking</h2>
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+<button id="btnAgg" onclick="setMode('agg')" style="font-weight:500">Agrégation</button>
+<button id="btnFlock" onclick="setMode('flock')">Flocking</button>
+<button id="btnReset" onclick="reset()">Redémarrer</button>
+</div>
+<div style="position:relative;border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface-1)">
+<canvas id="cv" width="640" height="360" style="width:100%;display:block"></canvas>
+</div>
+<p style="font-size:12px;color:var(--text-secondary);margin-top:8px" id="caption">Chaque robot va vers le centre de ses voisins proches, tout en gardant une distance minimale.</p>
+<script>
+const cv=document.getElementById('cv');const ctx=cv.getContext('2d');
+let mode='agg';let robots=[];const N=24;const W=640,H=360;
+function isDark(){const m=document.documentElement.dataset.mode;return m?m==='dark':matchMedia('(prefers-color-scheme: dark)').matches;}
+function init(){robots=[];for(let i=0;i<N;i++){robots.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2});}}
+function reset(){init();}
+function setMode(m){mode=m;document.getElementById('btnAgg').style.fontWeight=m==='agg'?'500':'400';document.getElementById('btnFlock').style.fontWeight=m==='flock'?'500':'400';document.getElementById('caption').textContent=m==='agg'?'Chaque robot va vers le centre de ses voisins proches, tout en gardant une distance minimale.':'Chaque robot ajuste sa vitesse pour s\'aligner sur la vitesse moyenne de ses voisins proches.';}
+function step(){
+const R=70;
+for(const r of robots){
+let cx=0,cy=0,cn=0,avx=0,avy=0,sx=0,sy=0;
+for(const o of robots){if(o===r)continue;const dx=o.x-r.x,dy=o.y-r.y;const d=Math.hypot(dx,dy);
+if(d<R){cx+=o.x;cy+=o.y;cn++;avx+=o.vx;avy+=o.vy;if(d<18){sx-=dx/(d+0.01);sy-=dy/(d+0.01);}}
+}
+if(mode==='agg'){
+if(cn>0){cx/=cn;cy/=cn;r.vx+=(cx-r.x)*0.0025;r.vy+=(cy-r.y)*0.0025;}
+r.vx+=sx*0.02;r.vy+=sy*0.02;
+}else{
+if(cn>0){avx/=cn;avy/=cn;r.vx+=(avx-r.vx)*0.05;r.vy+=(avy-r.vy)*0.05;}
+r.vx+=sx*0.02;r.vy+=sy*0.02;
+const speed=Math.hypot(r.vx,r.vy)||0.01;const target=1.8;r.vx=r.vx/speed*target;r.vy=r.vy/speed*target;
+}
+r.vx*=0.98;r.vy*=0.98;
+r.x+=r.vx;r.y+=r.vy;
+if(r.x<10){r.x=10;r.vx*=-1;}if(r.x>W-10){r.x=W-10;r.vx*=-1;}
+if(r.y<10){r.y=10;r.vy*=-1;}if(r.y>H-10){r.y=H-10;r.vy*=-1;}
+}
+}
+function draw(){
+ctx.clearRect(0,0,W,H);
+const dark=isDark();
+ctx.fillStyle=dark?'#5DCAA5':'#0F6E56';
+for(const r of robots){
+ctx.beginPath();ctx.arc(r.x,r.y,5,0,Math.PI*2);ctx.fill();
+if(mode==='flock'){const a=Math.atan2(r.vy,r.vx);ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(a)*9,r.y+Math.sin(a)*9);ctx.stroke();}
+}
+}
+function loop(){step();draw();requestAnimationFrame(loop);}
+init();setMode('agg');loop();
+</script>
